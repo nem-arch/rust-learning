@@ -24,7 +24,14 @@ fn irc(rx: Receiver<Result<(),()>>) {
 
     loop {
         match sock.read(buff) {
-            Ok(_) => { println!("{}",str::from_utf8(buff).unwrap()) },
+            Ok(i) => {
+                for i in range(i, 128) {
+                    if i<128 {
+                        buff[i] = 0;
+                    }
+                }
+                print!("{}",str::from_utf8(buff).unwrap());
+            },
             Err(e) => println!("ERROR READING BUFFER: {}",e)
         };
         match rx.try_recv() {
