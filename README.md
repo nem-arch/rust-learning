@@ -11,8 +11,8 @@ open channel, write to it from separate proc, receive.
 
 play around with sleeps, to see effects of "race conditions".
 
-## main
-basics of enum, functions and return matching.
+## ric
+unfancy irc connect/disconnect
 
 ## net
 open tcp stream, send string.
