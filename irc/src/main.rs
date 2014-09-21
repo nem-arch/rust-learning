@@ -1,19 +1,11 @@
-extern crate green;
-extern crate rustuv;
-
-use std::io::{TcpStream, signal};
-use std::io::signal::{Interrupt, Break, Quit};
+use std::io::TcpStream;
+use std::io;
 use std::str;
 
-#[start]
-fn start(argc: int, argv: *const *const u8) -> int {
-        green::start(argc, argv, rustuv::event_loop, main)
-}
-fn irc(rx: Receiver<Result<(),()>>) {
+fn main() {
     let nick = "rust_test_";
     let host = "irc.freenode.net";
     let port = 6667;
-    let mut buff = [0u8, .. 128];
     let mut sock = match TcpStream::connect(host, port) {
         Ok(s) => s,
         Err(e) => fail!("{}",e)
@@ -21,59 +13,50 @@ fn irc(rx: Receiver<Result<(),()>>) {
     sock.write_line(format!("NICK {}",nick).as_slice()).unwrap();
     sock.write_line(format!("USER {} {} {}: {}",nick,nick,nick,nick).as_slice()).unwrap();
     println!("SENT LOGIN");
-
-    loop {
-        match sock.read(buff) {
-            Ok(i) => {
-                for i in range(i, 128) {
-                    if i<128 {
-                        buff[i] = 0;
-                    }
+    let (cmdtx, cmdrx) = channel::<String>();
+    let mut sock_write = sock.clone();
+    let mut sock_read = sock.clone();
+    spawn(proc() {
+        loop {
+            // hogs cpu
+            match sock_read.read_byte() {
+                Ok(s) => {
+                    print!("{}",str::from_utf8(&[s]).unwrap());
+                },
+                Err(e) => {
+                    println!("ERROR READING BUFFER: {}",e);
+                    break;
                 }
-                print!("{}",str::from_utf8(buff).unwrap());
-            },
-            Err(e) => println!("ERROR READING BUFFER: {}",e)
-        };
-        match rx.try_recv() {
-            Ok(_) => {
-                match sock.write_line("QUIT") {
-                    Err(e) => println!("ERROR SENDING QUIT: {}",e),
-                    Ok(()) => {
-                        println!("QUIT SENT");
+            };
+        }
+    });
+    spawn(proc() {
+        loop {
+            match cmdrx.try_recv() {
+                Ok(s) => {
+                    println!("COMMAND {}",s);
+                    if s.as_slice() == "quit\n" {
+                        sock_write.write_line("QUIT").unwrap();
                         break;
                     }
-                };
-            },
-            _ => ()
+                },
+                _ => ()
+            }
         }
-    }
-    sock.read(buff).unwrap();
-    println!("{}",str::from_utf8(buff).unwrap());
-}
-
-fn main() {
-    let mut sighandler = signal::Listener::new();
-    match sighandler.register(Interrupt) {
-        Err(e) => { fail!(format!("{}",e)) },
-        _ => ()
-    };
-    match sighandler.register(Break) {
-        Err(e) => { fail!(format!("{}",e)) },
-        _ => ()
-    };
-    match sighandler.register(Quit) {
-        Err(e) => { fail!(format!("{}",e)) },
-        _ => ()
-    };
-    let (tx, rx) = channel::<Result<(),()>>();
-    spawn(proc() {
-        irc(rx);
+        println!("{}",sock.read_to_string().as_slice());
     });
+    let mut cmd: String = "none".to_string();
     loop {
-        match sighandler.rx.recv() {
-            Interrupt|Break|Quit => { tx.send(Err(())); break; },
-            _ => ()
+        match io::stdin().read_line() {
+            Ok(s) => {
+                cmd = s.clone();
+                cmdtx.send(s);
+            },
+            _ => {}
+        };
+        if cmd.as_slice() == "quit\n" {
+            break;
         }
-    }
-    println!("END");
+}
+println!("END");
 }
