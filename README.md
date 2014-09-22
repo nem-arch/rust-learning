@@ -11,7 +11,7 @@ open channel, write to it from separate proc, receive.
 
 play around with sleeps, to see effects of "race conditions".
 
-## ric
+## irc
 unfancy irc connect/disconnect
 
 ## net
