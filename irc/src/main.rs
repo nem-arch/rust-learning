@@ -15,18 +15,19 @@ fn main() {
     sock.write_line(format!("NICK {}",nick).as_slice()).unwrap();
     sock.write_line(format!("USER {} {} {}: {}",nick,nick,nick,nick).as_slice()).unwrap();
     println!("SENT LOGIN");
-    let (cmdtx, cmdrx) = channel::<String>();
+    let (cmdtx, cmdrx) = channel::<Result<String, ()>>();
     let mut sock_write = sock.clone();
     let mut sock_read = sock.clone();
-    let mut buff = [0u8, .. 4096];
+    let mut buff = [0u8, .. 512];
     spawn(proc() {
         loop {
-            sock_read.set_read_timeout(Some(100));
-            // hogs cpu
+            sock_read.set_read_timeout(Some(10));
             match sock_read.read(buff) {
                 Ok(i) => {
                     if i<buff.len() {
-                        buff[i] = 0;
+                        for j in range(i, buff.len()) {
+                            buff[j] = 0;
+                        }
                     }
                     print!("{}",str::from_utf8(buff).unwrap());
                 },
@@ -43,7 +44,7 @@ fn main() {
     });
     spawn(proc() {
         loop {
-            match cmdrx.try_recv() {
+            match cmdrx.recv() {
                 Ok(s) => {
                     println!("COMMAND {}",s);
                     if s.as_slice() == "quit\n" {
@@ -54,14 +55,13 @@ fn main() {
                 _ => ()
             }
         }
-        println!("{}",sock.read_to_string().as_slice());
     });
     let mut cmd: String = "none".to_string();
     loop {
         match io::stdin().read_line() {
             Ok(s) => {
                 cmd = s.clone();
-                cmdtx.send(s);
+                cmdtx.send(Ok(s));
             },
             _ => {}
         };
