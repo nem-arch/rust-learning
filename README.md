@@ -11,6 +11,12 @@ open channel, write to it from separate proc, receive.
 
 play around with sleeps, to see effects of "race conditions".
 
+## guess
+guessgame from the rustbook.
+
+## guessbot
+program playing guess with itself
+
 ## irc
 unfancy irc connect/disconnect
 
