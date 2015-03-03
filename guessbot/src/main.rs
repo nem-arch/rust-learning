@@ -1,4 +1,4 @@
-use std::rand;
+extern crate rand;
 use std::cmp::Ordering;
 
 fn main() {

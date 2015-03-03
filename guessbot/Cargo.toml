@@ -3,3 +3,6 @@
 name = "guessbot"
 version = "0.0.1"
 authors = ["nem"]
+
+[dependencies]
+rand = "0.1"
